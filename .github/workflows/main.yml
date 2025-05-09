@@ -1,0 +1,41 @@
+name: Auto Update Version
+
+on:
+  push:
+    tags:
+      - 'v*' # 匹配 v1.0.0, v2.1.3 等格式的标签
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 获取完整的提交历史
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.repository.default_branch }}  # 明确检出默认分支
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Extract version from tag
+        id: tag
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Update package.json version
+        run: |
+          npm version ${{ env.version }} --no-git-tag-version
+          echo "Updated package.json to version ${{ env.version }}"
+
+      - name: Commit changes
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add package.json
+          git commit -m "Update version to ${{ env.version }}"
+          git push origin ${{ github.event.repository.default_branch }}
